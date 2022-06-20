@@ -1,0 +1,16 @@
+name: flowers
+channels:
+  - plotly
+dependencies:
+  - python=3.7
+  - pip
+  - conda-forge::six
+  - conda-forge::pillow
+  - conda-forge::numpy
+  - conda-forge::matplotlib
+  - conda-forge::cudatoolkit=10
+  # - conda-forge::cudatoolkit=11.3
+  # - conda-forge::tensorflow==2.8.1
+  - conda-forge::jupyterlab
+  - pip:
+    - tensorflow==1.15.5
