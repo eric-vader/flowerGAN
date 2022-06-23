@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.7
   - pip
+  - protobuf==3.19.1
   - conda-forge::six
   - conda-forge::pillow
   - conda-forge::numpy

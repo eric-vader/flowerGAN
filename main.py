@@ -3,21 +3,31 @@ from six.moves import urllib
 import os
 import sys
 import tarfile
+from pathlib import Path
+import re
 
 # !mkdir -p 'data'
 data_dir = 'data/'
+export_dir = "export/"
+checkpoint_path_str = './checkpoint/'
 
-data_url = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/17/17flowers.tgz'
-filename = data_url.split('/')[-1]
-filepath = data_dir + data_url.split('/')[-1]
+checkpoint_path = Path(checkpoint_path_str)
+checkpoint_path.mkdir(parents=True, exist_ok=True)
 
-if not os.path.exists(filepath):
-  def progress(count, block_size, total_size):
-    sys.stdout.write('\r>> Downloading %s %.1f%%' % \
-        (filename, float(count * block_size) / total_size * 100))
-    sys.stdout.flush()
-  filepath, _ = urllib.request.urlretrieve(data_url, filepath, progress)
-  tarfile.open(filepath, 'r:gz').extractall(data_dir)
+IMAGE_SIZE_W = 64
+IMAGE_SIZE_L = 64
+
+# data_url = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/17/17flowers.tgz'
+# filename = data_url.split('/')[-1]
+# filepath = data_dir + data_url.split('/')[-1]
+
+# if not os.path.exists(filepath):
+#   def progress(count, block_size, total_size):
+#     sys.stdout.write('\r>> Downloading %s %.1f%%' % \
+#         (filename, float(count * block_size) / total_size * 100))
+#     sys.stdout.flush()
+#   filepath, _ = urllib.request.urlretrieve(data_url, filepath, progress)
+#   tarfile.open(filepath, 'r:gz').extractall(data_dir)
 
 # Creating a larger dataset using data augmentation.
 
@@ -26,50 +36,70 @@ from os import listdir
 from os.path import isfile, join
 import numpy as np
 import numpy.random as rnd
-
-img_dir = data_dir + 'jpg/'
-
-img_files = [join(img_dir, f)
-             for f in listdir(img_dir) if isfile(join(img_dir, f))]
-
-data = []
-for f in img_files:
-  if f.split('.')[-1] != 'jpg':
-    continue
-  img = Image.open(f)
-  imgs = [img.rotate(10.0 * (rnd.random() - 0.5)) for _ in range(5)]
-  all_imgs = []
-  for img in imgs:
-    w, h = img.size
-    if w > h:
-      all_imgs.append(img.crop(((w - h) // 2, 0, h, h)))
-      #all_imgs.append(img.crop((w - h, 0, h, h)))
-      all_imgs.append(img.crop((0, 0, h, h)))
-    else:
-      all_imgs.append(img.crop((0, (h - w) // 2, w, w)))
-      #all_imgs.append(img.crop((0, h - w, w, w)))
-      all_imgs.append(img.crop((0, 0, w, w)))
-  for img in all_imgs:
-    img = img.resize((64, 64))
-    data.append(np.asarray(img) / 255)
-    data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
-data = np.array(data, dtype=np.float32)
-
 import matplotlib.pyplot as plt
+import matplotlib
 
-def plot_image(img, shape=(64, 64, 3)):
-  plt.imshow(img.reshape(shape), cmap='gray', interpolation='nearest')
-  plt.axis('off')
+def zoom_at(img, x, y, zoom):
+    w, h = img.size
+    zoom2 = zoom * 2
+    img = img.crop((x - w / zoom2, y - h / zoom2, 
+                    x + w / zoom2, y + h / zoom2))
+    return img.resize((w, h), Image.LANCZOS)
 
-  # Plotting some sample data.
+class ImgData(object):
+  def __init__(self, datasetid):
+    self.datasetid = datasetid
+    self.img_dim = (IMAGE_SIZE_W, IMAGE_SIZE_L)
+    img_dir = join(data_dir, datasetid)
 
-rnd_idx = rnd.permutation(len(data))
-fig = plt.figure(figsize=(12, 6))
+    img_files = [join(img_dir, f)
+                for f in listdir(img_dir) if isfile(join(img_dir, f))]
 
-for i, img in enumerate(data[rnd_idx[:10]]):
-  plt.subplot(2, 5, i + 1)
-  plot_image(img)
-#plt.show()
+    data = []
+    for f in img_files:
+      if f.split('.')[-1] != 'jpg':
+        continue
+      img = Image.open(f)
+      imgs = [img.rotate(10.0 * (rnd.random() - 0.5)) for _ in range(5)]
+      all_imgs = []
+      for img in imgs:
+
+        # img = zoom_at(img, 0,0, .5)
+        w, h = img.size
+        if w > h:
+          all_imgs.append(img.crop(((w - h) // 2, 0, h, h)))
+          # all_imgs.append(img.crop((w - h, 0, h, h)))
+          all_imgs.append(img.crop((0, 0, h, h)))
+        else:
+          all_imgs.append(img.crop((0, (h - w) // 2, w, w)))
+          # all_imgs.append(img.crop((0, h - w, w, w)))
+          all_imgs.append(img.crop((0, 0, w, w)))
+      for img in all_imgs:
+        img = img.resize(self.img_dim)
+        data.append(np.asarray(img) / 255)
+        data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
+    data = np.array(data, dtype=np.float32)
+    
+    self.data = data
+
+  def plot_image(self, img):
+    shape = self.img_dim + (3,)
+    plt.imshow(img.reshape(shape), cmap='gray', interpolation='nearest')
+    plt.axis('off')
+
+  def export_all(self):
+    export_path = join(export_dir, self.datasetid)
+    Path(export_path).mkdir(parents=True, exist_ok=True)
+
+    # rnd_idx = rnd.permutation(len(data))
+    fig = plt.figure(figsize=(1, 1), frameon=False, dpi=200)
+
+    # Dump all data
+    for i, img in enumerate(self.data[:50]): # [rnd_idx[:10]]
+      # plt.subplot(2, 5, i + 1)
+      # self.plot_image(img)
+      matplotlib.image.imsave(join(export_path, f"image_{i:04d}.jpg"), img)
+      # plt.savefig(join(export_path, f"image_{i:04d}.jpg"), bbox_inches='tight', pad_inches=0)
 
 from tensorflow.keras.layers import (Input, Conv2D, LeakyReLU, Activation,
                                      Dropout, Flatten, Dense, Reshape,
@@ -258,14 +288,13 @@ class WGANGP(object):
         print('G Loss: {:04f}'.format(g_loss))
       if epoch % save_every_n_epochs == 0 and checkpoint_path:
         print('Saving after epoch: {}'.format(epoch))
-        self.model.save_weights(checkpoint_path + 'model_weights.hdf5')
+        # self.model.save_weights(checkpoint_path + 'model_weights.hdf5')
         self.model.save_weights(
             checkpoint_path + 'model_weights_{}.hdf5'.format(epoch))
 
-IMAGE_SIZE = 64
 BATCH_SIZE = 64
 
-wgangp = WGANGP(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3),
+wgangp = WGANGP(input_shape=(IMAGE_SIZE_W, IMAGE_SIZE_L, 3),
                 critic_conv_filters=(64, 128, 256, 512),
                 critic_conv_kernel_size=(5, 5, 5, 5),
                 critic_conv_strides=(2, 2, 2, 2),
@@ -286,10 +315,41 @@ wgangp = WGANGP(input_shape=(IMAGE_SIZE, IMAGE_SIZE, 3),
                 z_dim=100,
                 batch_size=BATCH_SIZE)
 
-checkpoint_path = './checkpoint/'
+print(wgangp.critic.summary())
+print(wgangp.generator.summary())
 
-wgangp.train(data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
-             print_every_n_epochs=10, checkpoint_path=checkpoint_path,
-             save_every_n_epochs=100, initial_epoch=0)
+max_epoch = 0
+for ea_checkpoint_file in checkpoint_path.iterdir():
+  if ea_checkpoint_file.is_file():
+    checkpoint_match = re.match(r"model_weights_([0-9]+)\.hdf5", ea_checkpoint_file.name)
+    if checkpoint_match:
+      print(ea_checkpoint_file.name)
+      max_epoch = max(max_epoch, int(checkpoint_match.group(1)))
+
+print(max_epoch)
+oxford = ImgData('orchid')
+# oxford.export_all()
+
+wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
+             print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
+             save_every_n_epochs=100, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
+
+# wgangp.model.load_weights(
+#     checkpoint_path_str + 'model_weights_{}.hdf5'.format(max_epoch))
+
+# n_to_show = 40
+# n_rows = 4
+
+# fig = plt.figure(figsize=(12, 5))
+
+# for i in range(n_to_show):
+#   x = wgangp.generator.predict(
+#       np.random.normal(0.0, 1.0, size=(1, wgangp.z_dim)))[0]
+#   x = np.clip(x, 0, 1)
+#   ax = fig.add_subplot(n_rows, n_to_show // n_rows, i + 1)
+#   ax.axis('off')
+#   ax.imshow(x.squeeze(), interpolation='antialiased')
+
+# plt.show()
