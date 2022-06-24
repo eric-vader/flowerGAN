@@ -15,9 +15,11 @@ checkpoint_path_str = './checkpoint/'
 checkpoint_path = Path(checkpoint_path_str)
 checkpoint_path.mkdir(parents=True, exist_ok=True)
 
-IMAGE_SIZE_W = 50
-IMAGE_SIZE_L = 50
+IMAGE_SIZE_W = 64
+IMAGE_SIZE_L = 64
 
+# ORIG_RESIZE = (86, 128)
+ORIG_RESIZE = (43, 64)
 # Original 1654/2480
 # Original 827/1240
 
@@ -53,7 +55,7 @@ class ImgData(object):
     img_files = [join(img_dir, f)
                 for f in listdir(img_dir) if isfile(join(img_dir, f))]
 
-    img_data_path = join(data_dir, f"{datasetid}.npy")
+    img_data_path = join(data_dir, f"{datasetid}_{IMAGE_SIZE_W}_{IMAGE_SIZE_L}.npy")
     if isfile(img_data_path):
       with open(img_data_path, 'rb') as f:
         self.data = np.load(f)
@@ -70,8 +72,14 @@ class ImgData(object):
         # Path(export_path).mkdir(parents=True, exist_ok=True)
 
         for img in imgs:
-          img = img.resize(self.img_dim, Image.Resampling.LANCZOS) 
-          # img.save(join(export_path, f"image_{i:04d}.jpg"),"PNG")
+          img = img.resize(ORIG_RESIZE, Image.Resampling.LANCZOS) 
+          old_size = img.size
+          new_size = (IMAGE_SIZE_W, IMAGE_SIZE_L)
+          new_im = Image.new("RGB", new_size)   ## luckily, this is already black!
+          box = tuple((n - o) // 2 for n, o in zip(new_size, old_size))
+          new_im.paste(img, box)
+          # new_im.save(join(export_path, f"image_{i:04d}.jpg"),"PNG")
+          img = new_im
           
           data.append(np.asarray(img) / 255)
           data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
@@ -98,7 +106,7 @@ class ImgData(object):
     for i, img in enumerate(self.data[:50]): # [rnd_idx[:10]]
       # plt.subplot(2, 5, i + 1)
       # self.plot_image(img)
-      matplotlib.image.imsave(join(export_path, f"image_{i:04d}.jpg"), img)
+      matplotlib.image.imsave(join(export_path, f"image_{i:04d}.png"), img)
       # plt.savefig(join(export_path, f"image_{i:04d}.jpg"), bbox_inches='tight', pad_inches=0)
 
 from tensorflow.keras.layers import (Input, Conv2D, LeakyReLU, Activation,
@@ -201,11 +209,12 @@ class WGANGP(object):
                             strides=generator_conv_strides[i], padding='same',
                             kernel_initializer=weight_init,
                             name='generator_conv_{}'.format(i))(x)
+      x = get_activation(generator_activation)(x)
+      # print(x.shape, generator_conv_filters[i], generator_conv_kernel_size[i], generator_conv_strides[i])
       if i == (len(generator_upsample) - 1):
         break
       if generator_batch_norm_momentum:
         x = BatchNormalization(momentum=generator_batch_norm_momentum)(x)
-      x = get_activation(generator_activation)(x)
     generator_output = Activation('tanh')(x)
     self.generator = Model(generator_input, generator_output)
 
@@ -329,9 +338,9 @@ wgangp = WGANGP(input_shape=(IMAGE_SIZE_W, IMAGE_SIZE_L, 3),
 print(wgangp.critic.summary())
 print(wgangp.generator.summary())
 
-# wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
-#              print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
-#              save_every_n_epochs=100, initial_epoch=max_epoch)
+wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
+             print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
+             save_every_n_epochs=100, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
 
