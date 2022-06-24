@@ -1,2 +1,4 @@
 data/
 export/
+__pycache__/
+checkpoint/

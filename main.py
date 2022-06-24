@@ -5,6 +5,7 @@ import sys
 import tarfile
 from pathlib import Path
 import re
+from rotate import rotate_crop_scale
 
 # !mkdir -p 'data'
 data_dir = 'data/'
@@ -14,8 +15,11 @@ checkpoint_path_str = './checkpoint/'
 checkpoint_path = Path(checkpoint_path_str)
 checkpoint_path.mkdir(parents=True, exist_ok=True)
 
-IMAGE_SIZE_W = 64
-IMAGE_SIZE_L = 64
+IMAGE_SIZE_W = 83
+IMAGE_SIZE_L = 124
+
+# Original 1654/2480
+# Original 827/1240
 
 # data_url = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/17/17flowers.tgz'
 # filename = data_url.split('/')[-1]
@@ -35,16 +39,10 @@ from PIL import Image
 from os import listdir
 from os.path import isfile, join
 import numpy as np
-import numpy.random as rnd
+rnd = np.random.default_rng(seed=0)
+
 import matplotlib.pyplot as plt
 import matplotlib
-
-def zoom_at(img, x, y, zoom):
-    w, h = img.size
-    zoom2 = zoom * 2
-    img = img.crop((x - w / zoom2, y - h / zoom2, 
-                    x + w / zoom2, y + h / zoom2))
-    return img.resize((w, h), Image.LANCZOS)
 
 class ImgData(object):
   def __init__(self, datasetid):
@@ -60,27 +58,22 @@ class ImgData(object):
       if f.split('.')[-1] != 'jpg':
         continue
       img = Image.open(f)
-      imgs = [img.rotate(10.0 * (rnd.random() - 0.5)) for _ in range(5)]
-      all_imgs = []
-      for img in imgs:
+      imgs = [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(10)]
 
-        # img = zoom_at(img, 0,0, .5)
-        w, h = img.size
-        if w > h:
-          all_imgs.append(img.crop(((w - h) // 2, 0, h, h)))
-          # all_imgs.append(img.crop((w - h, 0, h, h)))
-          all_imgs.append(img.crop((0, 0, h, h)))
-        else:
-          all_imgs.append(img.crop((0, (h - w) // 2, w, w)))
-          # all_imgs.append(img.crop((0, h - w, w, w)))
-          all_imgs.append(img.crop((0, 0, w, w)))
-      for img in all_imgs:
-        img = img.resize(self.img_dim)
+      # i = 0
+      # export_path = join(export_dir, self.datasetid)
+      # Path(export_path).mkdir(parents=True, exist_ok=True)
+
+      for img in imgs:
+        img = img.resize(self.img_dim) # , Image.Resampling.LANCZOS
+        # img.save(join(export_path, f"image_{i:04d}.jpg"),"PNG")
+        
         data.append(np.asarray(img) / 255)
         data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
-    data = np.array(data, dtype=np.float32)
-    
-    self.data = data
+        data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
+        data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
+
+    self.data = np.array(data, dtype=np.float32)
 
   def plot_image(self, img):
     shape = self.img_dim + (3,)
@@ -292,6 +285,17 @@ class WGANGP(object):
         self.model.save_weights(
             checkpoint_path + 'model_weights_{}.hdf5'.format(epoch))
 
+max_epoch = 0
+for ea_checkpoint_file in checkpoint_path.iterdir():
+  if ea_checkpoint_file.is_file():
+    checkpoint_match = re.match(r"model_weights_([0-9]+)\.hdf5", ea_checkpoint_file.name)
+    if checkpoint_match:
+      max_epoch = max(max_epoch, int(checkpoint_match.group(1)))
+
+print(f"Load epoch={max_epoch}")
+oxford = ImgData('orchid')
+oxford.export_all()
+
 BATCH_SIZE = 64
 
 wgangp = WGANGP(input_shape=(IMAGE_SIZE_W, IMAGE_SIZE_L, 3),
@@ -318,21 +322,9 @@ wgangp = WGANGP(input_shape=(IMAGE_SIZE_W, IMAGE_SIZE_L, 3),
 print(wgangp.critic.summary())
 print(wgangp.generator.summary())
 
-max_epoch = 0
-for ea_checkpoint_file in checkpoint_path.iterdir():
-  if ea_checkpoint_file.is_file():
-    checkpoint_match = re.match(r"model_weights_([0-9]+)\.hdf5", ea_checkpoint_file.name)
-    if checkpoint_match:
-      print(ea_checkpoint_file.name)
-      max_epoch = max(max_epoch, int(checkpoint_match.group(1)))
-
-print(max_epoch)
-oxford = ImgData('orchid')
-# oxford.export_all()
-
-wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
-             print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
-             save_every_n_epochs=100, initial_epoch=max_epoch)
+# wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
+#              print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
+#              save_every_n_epochs=100, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
 

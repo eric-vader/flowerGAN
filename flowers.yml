@@ -13,5 +13,7 @@ dependencies:
   # - conda-forge::cudatoolkit=11.3
   # - conda-forge::tensorflow==2.8.1
   - conda-forge::jupyterlab
+  # - conda-forge::opencv
   - pip:
     - tensorflow==1.15.5
+    - opencv-python==4.6.0.66
