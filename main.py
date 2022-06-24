@@ -15,8 +15,8 @@ checkpoint_path_str = './checkpoint/'
 checkpoint_path = Path(checkpoint_path_str)
 checkpoint_path.mkdir(parents=True, exist_ok=True)
 
-IMAGE_SIZE_W = 83
-IMAGE_SIZE_L = 124
+IMAGE_SIZE_W = 50
+IMAGE_SIZE_L = 50
 
 # Original 1654/2480
 # Original 827/1240
@@ -53,27 +53,34 @@ class ImgData(object):
     img_files = [join(img_dir, f)
                 for f in listdir(img_dir) if isfile(join(img_dir, f))]
 
-    data = []
-    for f in img_files:
-      if f.split('.')[-1] != 'jpg':
-        continue
-      img = Image.open(f)
-      imgs = [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(10)]
+    img_data_path = join(data_dir, f"{datasetid}.npy")
+    if isfile(img_data_path):
+      with open(img_data_path, 'rb') as f:
+        self.data = np.load(f)
+    else:
+      data = []
+      for f in img_files:
+        if f.split('.')[-1] != 'jpg':
+          continue
+        img = Image.open(f)
+        imgs = [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(10)]
 
-      # i = 0
-      # export_path = join(export_dir, self.datasetid)
-      # Path(export_path).mkdir(parents=True, exist_ok=True)
+        # i = 0
+        # export_path = join(export_dir, self.datasetid)
+        # Path(export_path).mkdir(parents=True, exist_ok=True)
 
-      for img in imgs:
-        img = img.resize(self.img_dim) # , Image.Resampling.LANCZOS
-        # img.save(join(export_path, f"image_{i:04d}.jpg"),"PNG")
-        
-        data.append(np.asarray(img) / 255)
-        data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
-        data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
-        data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
+        for img in imgs:
+          img = img.resize(self.img_dim, Image.Resampling.LANCZOS) 
+          # img.save(join(export_path, f"image_{i:04d}.jpg"),"PNG")
+          
+          data.append(np.asarray(img) / 255)
+          data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
+          data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
+          data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
 
-    self.data = np.array(data, dtype=np.float32)
+      self.data = np.array(data, dtype=np.float32)
+      with open(img_data_path, 'wb') as f:
+        np.save(f, self.data)
 
   def plot_image(self, img):
     shape = self.img_dim + (3,)
