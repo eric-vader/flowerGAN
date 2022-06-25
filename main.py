@@ -338,9 +338,9 @@ wgangp = WGANGP(input_shape=(IMAGE_SIZE_W, IMAGE_SIZE_L, 3),
 print(wgangp.critic.summary())
 print(wgangp.generator.summary())
 
-wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=30000, n_critic=5,
+wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
              print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
-             save_every_n_epochs=100, initial_epoch=max_epoch)
+             save_every_n_epochs=1000, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
 
