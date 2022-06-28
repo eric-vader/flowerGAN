@@ -85,9 +85,9 @@ class ImgData(object):
           img = new_im
           
           data.append(np.asarray(img) / 255)
-          data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
-          data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
-          data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
+          # data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
+          # data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
+          # data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
 
       self.data = np.array(data, dtype=np.float32)
       with open(img_data_path, 'wb') as f:
@@ -341,49 +341,49 @@ wgangp = WGANGP(input_shape=(IMAGE_SIZE_W, IMAGE_SIZE_L, 3),
 print(wgangp.critic.summary())
 print(wgangp.generator.summary())
 
-# wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
-#              print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
-#              save_every_n_epochs=1000, initial_epoch=max_epoch)
+wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
+             print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
+             save_every_n_epochs=1000, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
 
-wgangp.model.load_weights(
-    checkpoint_path_str + 'model_weights_{}.hdf5'.format(max_epoch))
+# wgangp.model.load_weights(
+#     checkpoint_path_str + 'model_weights_{}.hdf5'.format(max_epoch))
 
-n_to_show = 40
-i = 0
+# n_to_show = 40
+# i = 0
 
-img = cv2.imread("export/orchid/image_0000.png")
-gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-_,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
-contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-cnt = contours[0]
-x,y,w,h = cv2.boundingRect(cnt)
-print(x,y,w,h)
+# img = cv2.imread("export/orchid/image_0000.png")
+# gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+# _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
+# contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+# cnt = contours[0]
+# x,y,w,h = cv2.boundingRect(cnt)
+# print(x,y,w,h)
 
-Path(join(generated_path_str, "orchid")).mkdir(parents=True, exist_ok=True)
+# Path(join(generated_path_str, "orchid")).mkdir(parents=True, exist_ok=True)
 
-for i in range(n_to_show):
-  img_x = wgangp.generator.predict(np.random.normal(0.0, 1.0, size=(1, wgangp.z_dim)))[0]
-  img_x = np.clip(img_x, 0, 1)
-  img_x = (img_x.squeeze()*255).astype(np.uint8)
-  gen_img = Image.fromarray(img_x)
+# for i in range(n_to_show):
+#   img_x = wgangp.generator.predict(np.random.normal(0.0, 1.0, size=(1, wgangp.z_dim)))[0]
+#   img_x = np.clip(img_x, 0, 1)
+#   img_x = (img_x.squeeze()*255).astype(np.uint8)
+#   gen_img = Image.fromarray(img_x)
   
-  # gen_img_path = join(generated_path_str, "orchid", f"imagesrc_{i:04d}.png")
-  # gen_img.save(gen_img_path,"PNG")
+#   # gen_img_path = join(generated_path_str, "orchid", f"imagesrc_{i:04d}.png")
+#   # gen_img.save(gen_img_path,"PNG")
 
-  # pil_img = cv2.imread(gen_img_path)
-  pil_img = np.array(gen_img.convert('RGB'))
+#   # pil_img = cv2.imread(gen_img_path)
+#   pil_img = np.array(gen_img.convert('RGB'))
 
-  crop = pil_img[y:y+h,x:x+w]
-  # cv2.imwrite(os.path.join("export", "orchid", f"imagers_{0:04d}.png"),crop)
-  crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+#   crop = pil_img[y:y+h,x:x+w]
+#   # cv2.imwrite(os.path.join("export", "orchid", f"imagers_{0:04d}.png"),crop)
+#   crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
 
-  # pil_img = Image.open("export/orchid/image_0000.png")
-  # width, height = pil_img.size   # Get dimensions
+#   # pil_img = Image.open("export/orchid/image_0000.png")
+#   # width, height = pil_img.size   # Get dimensions
 
-  # Crop the center of the image
-  blur_i = 14
-  pil_img = Image.fromarray(crop)
-  pil_img = pil_img.resize((1654, 2480), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(blur_i))
-  pil_img.save(join(generated_path_str, "orchid", f"image_{i:04d}.png"),"PNG")
+#   # Crop the center of the image
+#   blur_i = 14
+#   pil_img = Image.fromarray(crop)
+#   pil_img = pil_img.resize((1654, 2480), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(blur_i))
+#   pil_img.save(join(generated_path_str, "orchid", f"image_{i:04d}.png"),"PNG")
