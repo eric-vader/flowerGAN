@@ -209,7 +209,7 @@ if __name__ == "__main__":
     import os
     from PIL import ImageFilter
 
-    img = cv2.imread("export/orchid/image_0000.png")
+    img = cv2.imread("generated/orchid/imagesrc_0000.png")
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
     contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -217,14 +217,14 @@ if __name__ == "__main__":
     x,y,w,h = cv2.boundingRect(cnt)
 
     crop = img[y:y+h,x:x+w]
-    # cv2.imwrite(os.path.join("export", "orchid", f"imagers_{0:04d}.png"),crop)
+    cv2.imwrite(os.path.join("generated", "orchid", f"imagers_{0:04d}.png"),crop)
     crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
 
-    # img = Image.open("export/orchid/image_0000.png")
+    # img = Image.open("generated/orchid/image_0000.png")
     # width, height = img.size   # Get dimensions
 
     # Crop the center of the image
     blur_i = 14
     img = Image.fromarray(crop)
     img = img.resize((1654, 2480), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(blur_i))
-    img.save(os.path.join("export", "orchid", f"ss_image_{blur_i}_{0:04d}.png"),"PNG")
+    img.save(os.path.join("generated", "orchid", f"ss_image_{blur_i}_{0:04d}.png"),"PNG")
