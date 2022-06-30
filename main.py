@@ -22,7 +22,7 @@ IMAGE_SIZE_W = 64
 IMAGE_SIZE_L = 64
 
 # ORIG_RESIZE = (86, 128)
-ORIG_RESIZE = (43, 64)
+ORIG_RESIZE = (44, 64)
 # Original 1654/2480
 # Original 827/1240
 
@@ -68,7 +68,7 @@ class ImgData(object):
         if f.split('.')[-1] != 'jpg':
           continue
         img = Image.open(f)
-        imgs = [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(10)]
+        imgs = [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(5)]
 
         # i = 0
         # export_path = join(export_dir, self.datasetid)
@@ -85,9 +85,9 @@ class ImgData(object):
           img = new_im
           
           data.append(np.asarray(img) / 255)
-          # data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
-          # data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
-          # data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
+          data.append(np.asarray(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) / 255)
+          data.append(np.asarray(img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)) / 255)
+          data.append(np.asarray(img.transpose(Image.Transpose.ROTATE_180)) / 255)
 
       self.data = np.array(data, dtype=np.float32)
       with open(img_data_path, 'wb') as f:
@@ -353,13 +353,20 @@ wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
 # n_to_show = 40
 # i = 0
 
-# img = cv2.imread("export/orchid/image_0000.png")
-# gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-# _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
-# contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-# cnt = contours[0]
-# x,y,w,h = cv2.boundingRect(cnt)
-# print(x,y,w,h)
+# def get_bbox(img_path):
+#   img = cv2.imread(img_path)
+#   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+#   _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
+#   contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+#   cnt = contours[0]
+#   x,y,w,h = cv2.boundingRect(cnt)
+#   # print(x,y,w,h)
+#   return x,y,w,h
+
+# for i in range(50):
+#   print(get_bbox(f"export/orchid/image_{i:04d}.png"))
+
+# x,y,w,h = get_bbox(f"export/orchid/image_0000.png")
 
 # Path(join(generated_path_str, "orchid")).mkdir(parents=True, exist_ok=True)
 
