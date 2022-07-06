@@ -312,7 +312,7 @@ for ea_checkpoint_file in checkpoint_path.iterdir():
       max_epoch = max(max_epoch, int(checkpoint_match.group(1)))
 
 print(f"Load epoch={max_epoch}")
-oxford = ImgData('orchid')
+oxford = ImgData('orchid2')
 oxford.export_all()
 
 BATCH_SIZE = 64
