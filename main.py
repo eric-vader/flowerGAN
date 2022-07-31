@@ -10,9 +10,10 @@ from rotate import rotate_crop_scale
 from PIL import ImageFilter
 
 # !mkdir -p 'data'
+dataset_name = "orchid3"
 data_dir = 'data/'
 export_dir = "export/"
-checkpoint_path_str = './checkpoint/'
+checkpoint_path_str = f'./checkpoint/{dataset_name}/'
 generated_path_str = './generated/'
 
 checkpoint_path = Path(checkpoint_path_str)
@@ -68,7 +69,7 @@ class ImgData(object):
         if f.split('.')[-1] != 'jpg':
           continue
         img = Image.open(f)
-        imgs = [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(5)]
+        imgs = [rotate_crop_scale(np.asarray(img), 0)] + [rotate_crop_scale(np.asarray(img), 20.0 * (rnd.random() - 0.5)) for _ in range(2)]
 
         # i = 0
         # export_path = join(export_dir, self.datasetid)
@@ -304,6 +305,8 @@ class WGANGP(object):
         self.model.save_weights(
             checkpoint_path + 'model_weights_{}.hdf5'.format(epoch))
 
+
+
 max_epoch = 0
 for ea_checkpoint_file in checkpoint_path.iterdir():
   if ea_checkpoint_file.is_file():
@@ -312,8 +315,10 @@ for ea_checkpoint_file in checkpoint_path.iterdir():
       max_epoch = max(max_epoch, int(checkpoint_match.group(1)))
 
 print(f"Load epoch={max_epoch}")
-oxford = ImgData('orchid2')
+
+oxford = ImgData(dataset_name)
 oxford.export_all()
+np.random.shuffle(oxford.data)
 
 BATCH_SIZE = 64
 
@@ -343,7 +348,7 @@ print(wgangp.generator.summary())
 
 wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
              print_every_n_epochs=10, checkpoint_path=checkpoint_path_str,
-             save_every_n_epochs=1000, initial_epoch=max_epoch)
+             save_every_n_epochs=10000, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
 
@@ -351,7 +356,6 @@ wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
 #     checkpoint_path_str + 'model_weights_{}.hdf5'.format(max_epoch))
 
 # n_to_show = 40
-# i = 0
 
 # def get_bbox(img_path):
 #   img = cv2.imread(img_path)
@@ -363,12 +367,13 @@ wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
 #   # print(x,y,w,h)
 #   return x,y,w,h
 
-# for i in range(50):
-#   print(get_bbox(f"export/orchid/image_{i:04d}.png"))
+# # for i in range(50):
+# #   print(get_bbox(f"export/{dataset_name}/image_{i:04d}.png"))
 
-# x,y,w,h = get_bbox(f"export/orchid/image_0000.png")
+# # Sample one 
+# x,y,w,h = get_bbox(f"export/{dataset_name}/image_0000.png")
 
-# Path(join(generated_path_str, "orchid")).mkdir(parents=True, exist_ok=True)
+# # Path(join(generated_path_str, f"{dataset_name}")).mkdir(parents=True, exist_ok=True)
 
 # for i in range(n_to_show):
 #   img_x = wgangp.generator.predict(np.random.normal(0.0, 1.0, size=(1, wgangp.z_dim)))[0]
@@ -390,7 +395,7 @@ wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
 #   # width, height = pil_img.size   # Get dimensions
 
 #   # Crop the center of the image
-#   blur_i = 14
+#   blur_i = 25
 #   pil_img = Image.fromarray(crop)
 #   pil_img = pil_img.resize((1654, 2480), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(blur_i))
-#   pil_img.save(join(generated_path_str, "orchid", f"image_{i:04d}.png"),"PNG")
+#   pil_img.save(join(generated_path_str, f"{dataset_name}", f"image_{i:04d}.png"),"PNG")
