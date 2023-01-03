@@ -351,21 +351,57 @@ wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
              save_every_n_epochs=10000, initial_epoch=max_epoch)
 
 # https://github.com/matterport/Mask_RCNN/issues/2458
+def get_bbox(img_path):
+  img = cv2.imread(img_path)
+  gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+  _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
+  contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+  cnt = contours[0]
+  x,y,w,h = cv2.boundingRect(cnt)
+  # print(x,y,w,h)
+  return x,y,w,h
 
-# wgangp.model.load_weights(
-#     checkpoint_path_str + 'model_weights_{}.hdf5'.format(max_epoch))
+tf.set_random_seed(0)
+n_to_show = 1000
+x,y,w,h = get_bbox(f"export/{dataset_name}/image_0000.png")
 
-# n_to_show = 40
+for ea_checkpoint_file in checkpoint_path.iterdir():
+  if ea_checkpoint_file.is_file():
+    checkpoint_match = re.match(r"model_weights_([0-9]+)\.hdf5", ea_checkpoint_file.name)
+    if checkpoint_match:
+      target_epoch = int(checkpoint_match.group(1))
+      wgangp.model.load_weights(checkpoint_path_str + 'model_weights_{}.hdf5'.format(target_epoch))
 
-# def get_bbox(img_path):
-#   img = cv2.imread(img_path)
-#   gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-#   _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
-#   contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-#   cnt = contours[0]
-#   x,y,w,h = cv2.boundingRect(cnt)
-#   # print(x,y,w,h)
-#   return x,y,w,h
+      if target_epoch != 90000:
+        continue
+
+      for i in range(n_to_show): # n_to_show*10 if target_epoch == max_epoch else n_to_show
+        img_x = wgangp.generator.predict(np.random.normal(0.0, 1.0, size=(1, wgangp.z_dim)))[0]
+        img_x = np.clip(img_x, 0, 1)
+        img_x = (img_x.squeeze()*255).astype(np.uint8)
+        gen_img = Image.fromarray(img_x)
+        
+        # gen_img_path = join(generated_path_str, "orchid", f"imagesrc_{i:04d}.png")
+        # gen_img.save(gen_img_path,"PNG")
+
+        # pil_img = cv2.imread(gen_img_path)
+        pil_img = np.array(gen_img.convert('RGB'))
+
+        crop = pil_img[y:y+h,x:x+w]
+        # cv2.imwrite(os.path.join("export", "orchid", f"imagers_{0:04d}.png"),crop)
+        crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+
+        # pil_img = Image.open("export/orchid/image_0000.png")
+        # width, height = pil_img.size   # Get dimensions
+
+        # Crop the center of the image
+        blur_i = 25
+        pil_img = Image.fromarray(crop)
+        pil_img = pil_img.resize((1654, 2480), Image.Resampling.LANCZOS) # .filter(ImageFilter.GaussianBlur(blur_i))
+        Path(join(generated_path_str, f"{dataset_name}", str(target_epoch))).mkdir(parents=True, exist_ok=True)
+
+        pil_img.save(join(generated_path_str, f"{dataset_name}", str(target_epoch), f"image_{i:04d}.png"),"PNG")
+
 
 # # for i in range(50):
 # #   print(get_bbox(f"export/{dataset_name}/image_{i:04d}.png"))
@@ -374,28 +410,3 @@ wgangp.train(oxford.data, batch_size=BATCH_SIZE, epochs=100000, n_critic=5,
 # x,y,w,h = get_bbox(f"export/{dataset_name}/image_0000.png")
 
 # # Path(join(generated_path_str, f"{dataset_name}")).mkdir(parents=True, exist_ok=True)
-
-# for i in range(n_to_show):
-#   img_x = wgangp.generator.predict(np.random.normal(0.0, 1.0, size=(1, wgangp.z_dim)))[0]
-#   img_x = np.clip(img_x, 0, 1)
-#   img_x = (img_x.squeeze()*255).astype(np.uint8)
-#   gen_img = Image.fromarray(img_x)
-  
-#   # gen_img_path = join(generated_path_str, "orchid", f"imagesrc_{i:04d}.png")
-#   # gen_img.save(gen_img_path,"PNG")
-
-#   # pil_img = cv2.imread(gen_img_path)
-#   pil_img = np.array(gen_img.convert('RGB'))
-
-#   crop = pil_img[y:y+h,x:x+w]
-#   # cv2.imwrite(os.path.join("export", "orchid", f"imagers_{0:04d}.png"),crop)
-#   crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-
-#   # pil_img = Image.open("export/orchid/image_0000.png")
-#   # width, height = pil_img.size   # Get dimensions
-
-#   # Crop the center of the image
-#   blur_i = 25
-#   pil_img = Image.fromarray(crop)
-#   pil_img = pil_img.resize((1654, 2480), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(blur_i))
-#   pil_img.save(join(generated_path_str, f"{dataset_name}", f"image_{i:04d}.png"),"PNG")
